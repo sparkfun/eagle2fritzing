@@ -141,8 +141,8 @@ void xmlWriteText(UL_TEXT T) {
 		if (W.width > width) width = W.width;
   }
 
-  string text = "<text angle='%f' font='%d' layer='%d' mirror='%d' size='%fmil' spin='%d' x='%fmil' y='%fmil' width='%fmil' ratio='%f'>\n";
-  printf(text, T.angle, T.font, T.layer, T.mirror, u2mil(T.size), T.spin, u2mil(T.x), u2mil(T.y), u2mil(width), T.ratio / 100.0);
+  string text = "<text align='%d' angle='%f' font='%d' layer='%d' mirror='%d' size='%fmil' spin='%d' x='%fmil' y='%fmil' width='%fmil' ratio='%f'>\n";
+  printf(text, T.align, T.angle, T.font, T.layer, T.mirror, u2mil(T.size), T.spin, u2mil(T.x), u2mil(T.y), u2mil(width), T.ratio / 100.0);
   printf("<value>%s</value>\n", encodeText(T.value));
 
   if (T.font==FONT_VECTOR) {
