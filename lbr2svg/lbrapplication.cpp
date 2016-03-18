@@ -39,7 +39,7 @@ static const QString MeasuresLayer("47");
 static const QString CopperColor("#F7BD13");
 static const QString SilkColor("#f0f0f0");
 static const QString BreadboardCopperColor("#9A916C");
-static const QString BreadboardColor("#1F7A34");
+static const QString BreadboardColor("#E6321E");
 static const QString BreadboardSilkColor("#f8f8f8");
 
 static const QString PropSeparator("___");
@@ -1333,7 +1333,7 @@ void LbrApplication::processPackage(const QDir & workingFolder, const QDir & sub
         }
 
         qSort(elements.begin(), elements.end(), byConnectorID);
-        svg = MiscUtils::makeGeneric(workingFolder, "#1F7A34", elements, splitter.toString(), boardName, outerChipSize, innerChipSize, getConnectorName, getConnectorIndex, noText);
+        svg = MiscUtils::makeGeneric(workingFolder, "#E6321E", elements, splitter.toString(), boardName, outerChipSize, innerChipSize, getConnectorName, getConnectorIndex, noText);
 	}
 	else {
 		svg = TextUtils::makeSVGHeader(25.4, 25.4, dimensions.width(), dimensions.height());
