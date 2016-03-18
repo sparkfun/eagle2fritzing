@@ -995,7 +995,7 @@ QString BrdApplication::genParams(QDomElement & root, const QString & prefix)
 	params += QString("<!-- <property name='family'>sample family</property> -->\n");
     params += QString("</properties>\n");
 
-	params += QString("<breadboard breadboard-color='%1'>\n").arg("#1F7A34");
+	params += QString("<breadboard breadboard-color='%1'>\n").arg("#E6321E");
 	params += QString("<extra-layers>\n");
 	params += ("<!-- to add extra layers to the breadboard,\n"
 					"uncomment the following <layer> elements,\n"
@@ -1480,7 +1480,7 @@ bool viasFirst(QDomElement & contact1, QDomElement & contact2)
 
 QString BrdApplication::genGenericBreadboard(QDomElement & root, QDomElement & paramsRoot, DifParam * difParam, QDir & workingFolder) 
 {
-	QString boardColor = "#1F7A34";
+	QString boardColor = "#E6321E";
 
 	if (!paramsRoot.isNull()) {
 		QDomElement bb = paramsRoot.firstChildElement("breadboard");
@@ -1523,7 +1523,7 @@ QString BrdApplication::genBreadboard(QDomElement & root, QDomElement & paramsRo
 	svg += "<g id='breadboard'>\n";
 	svg += "<g id='icon'>\n";						// make sure we can use this image for icon view
 
-	QString boardColor = "#1F7A34";
+	QString boardColor = "#E6321E";
 
 	if (!paramsRoot.isNull()) {
 		QDomElement bb = paramsRoot.firstChildElement("breadboard");
@@ -3607,6 +3607,7 @@ QString BrdApplication::translateBoardColor(const QString & color)
 	QHash<QString,QString> colors;
 	colors.insert("blue", "#147390");
 	colors.insert("red", "#C62717");
+	colors.insert("SparkFun red", "#E6321E");
 	colors.insert("green", "#1F7A34");
 	colors.insert("purple", "#672E58");
 	colors.insert("black", "#1C1A1D");
