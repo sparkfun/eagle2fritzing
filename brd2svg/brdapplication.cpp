@@ -1480,7 +1480,7 @@ bool viasFirst(QDomElement & contact1, QDomElement & contact2)
 
 QString BrdApplication::genGenericBreadboard(QDomElement & root, QDomElement & paramsRoot, DifParam * difParam, QDir & workingFolder) 
 {
-		QString boardColor = "#E6321E";
+	QString boardColor = "#E6321E";
 
 	if (!paramsRoot.isNull()) {
 		QDomElement bb = paramsRoot.firstChildElement("breadboard");
@@ -1523,7 +1523,7 @@ QString BrdApplication::genBreadboard(QDomElement & root, QDomElement & paramsRo
 	svg += "<g id='breadboard'>\n";
 	svg += "<g id='icon'>\n";						// make sure we can use this image for icon view
 
-		QString boardColor = "#E6321E";
+	QString boardColor = "#E6321E";
 
 	if (!paramsRoot.isNull()) {
 		QDomElement bb = paramsRoot.firstChildElement("breadboard");
