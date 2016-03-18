@@ -3607,7 +3607,7 @@ QString BrdApplication::translateBoardColor(const QString & color)
 	QHash<QString,QString> colors;
 	colors.insert("blue", "#147390");
 	colors.insert("red", "#C62717");
-  colors.insert("SparkFun red", "#E6321E");
+	colors.insert("SparkFun red", "#E6321E");
 	colors.insert("green", "#1F7A34");
 	colors.insert("purple", "#672E58");
 	colors.insert("black", "#1C1A1D");
