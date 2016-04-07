@@ -13,7 +13,7 @@ class MiscUtils {
 
 public:
 	static bool makePartsDirectories(const QDir & workingFolder, const QString & core, QDir & fzpFolder, QDir & breadboardFolder, QDir & schematicFolder, QDir & pcbFolder, QDir & iconFolder);
-	static void calcTextAngle(qreal & angle, int mirror, int spin, qreal size, qreal & x, qreal & y, bool & anchorAtStart);
+    static void calcTextAngle(int align, qreal & angle, int mirror, int spin, qreal size, qreal & x, qreal & y, bool & anchorAtStart, QString &horiz, QString &vert);
 	static QString makeGeneric(const QDir & workingFolder, const QString & boardColor, QList<QDomElement> & powers, 
             const QString & copper, const QString & boardName, QSizeF outerChipSize, QSizeF innerChipSize,
             GetConnectorNameFn getConnectorName, GetConnectorNameFn getConnectorIndex, bool noText);
@@ -21,6 +21,9 @@ public:
     static bool rwaa(QDomElement & element, qreal & radius, qreal & width, qreal & angle1, qreal & angle2);
     static bool x1y1x2y2(const QDomElement & element, qreal & x1, qreal & y1, qreal & x2, qreal & y2);
     static qreal strToMil(const QString & str, bool & ok);
+    enum text_alignment { ALIGN_BOTTOM_LEFT, ALIGN_BOTTOM_CENTER,
+    ALIGN_BOTTOM_RIGHT, ALIGN_CENTER_LEFT, ALIGN_CENTER, ALIGN_CENTER_RIGHT,
+    ALIGN_TOP_LEFT, ALIGN_TOP_CENTER, ALIGN_TOP_RIGHT };
 
 protected:
 	static void includeSvg2(QDomDocument & doc, const QString & path, const QString & name, qreal x, qreal y);
