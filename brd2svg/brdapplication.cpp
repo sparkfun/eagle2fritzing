@@ -181,7 +181,7 @@ BrdApplication::BrdApplication(int& argc, char **argv[]) : QApplication(argc, *a
 
     GroundNames << "gnd"<<  "vss" << "vee" << "com";
     PowerNames << "vcc" << "+5v" << "+3v" << "+3.3v" << "5v" << "3v" << "3.3v" << "-" << "+" << "vdd" << "v+" << "v-" << "vin" << "vout" << "+v";
-    ExternalElementNames << "sv" << "j";
+    ExternalElementNames << "sv" << "j" << "d" << "r" << "c";	// BHW Added d, r, & c for PTH parts...
 
     m_core = "core";
 }
@@ -1970,10 +1970,10 @@ void BrdApplication::collectContacts(QDomElement & root, QDomElement & paramsRoo
         QDomElement contacts = package.firstChildElement("contacts");
         QDomElement contact = contacts.firstChildElement("contact");
         while (!contact.isNull()) {
-            //QString temp;
-            //QTextStream textStream(&temp);
-            //contact.save(textStream, 1);
-            //qDebug() << package.parentNode().toElement().attribute("name") << package.attribute("name") << temp;
+//            QString temp;
+//            QTextStream textStream(&temp);
+//            contact.save(textStream, 1);
+//            qDebug() << package.parentNode().toElement().attribute("name") << package.attribute("name") << temp;
 
             int used = 0;
             bool append = false;
@@ -1996,6 +1996,7 @@ void BrdApplication::collectContacts(QDomElement & root, QDomElement & paramsRoo
             else {
                 append = true;
                 QString elementName = package.parentNode().toElement().attribute("name");
+
                 foreach (QString externalElementName, ExternalElementNames) {
                     if (elementName.startsWith(externalElementName, Qt::CaseInsensitive)) {
                         used = 1;
@@ -2009,6 +2010,7 @@ void BrdApplication::collectContacts(QDomElement & root, QDomElement & paramsRoo
                 }
                 contact.setAttribute("used", used);
                 contactsList.append(contact);
+
                 if (m_genericSMD && used != 0 && contact.attribute("signal").isEmpty()) {
                     contact.setAttribute("signal", contactsList.length());  // just got incremented
                 }
@@ -2408,7 +2410,7 @@ void BrdApplication::addElements(QDomElement & root, QList<QDomElement> & to, qr
 }
 
 
-void BrdApplication::genText(QDomElement & element, const QString & text, QString & svg, QDomElement & paramsRoot, const QString & textColor) 
+void BrdApplication::genText(QDomElement & element, const QString & text, QString & svg, QDomElement & paramsRoot, const QString & textColor, int lineNumber)
 {
     bool checkedWires = false;
     QDomElement wires = element.firstChildElement("wires");
@@ -2462,6 +2464,9 @@ void BrdApplication::genText(QDomElement & element, const QString & text, QStrin
 
     qreal size = MiscUtils::strToMil(element.attribute("size", ""), ok);
     if (!ok) return;
+
+    // If the text was split on newline characters scoot lines
+    y = y - lineNumber * size * 1.25;	// Add 25% to size for line spacing TODO: improve
 
     QString elementName;
     QDomElement bb = paramsRoot.firstChildElement("breadboard");
@@ -2606,13 +2611,24 @@ void BrdApplication::genLayerElement(QDomElement & paramsRoot, QDomElement & ele
 
         QString t;
         TextUtils::findText(element, t);
-        svg += QString("<g><title>text:%1</title>\n").arg(TextUtils::escapeAnd(t));
-        QDomElement child = element.firstChildElement("wires");
-        if (!child.isNull() && false) {
-            genPath(element, svg, "none", "white", doFillings);
+        QStringList lines;
+
+        // Split text into multiple bits on '\n'
+        if (t.contains('\n')) {
+            lines = t.split('\n');
+        } else {
+            lines << t;
         }
-        else {
-            genText(element, t, svg, paramsRoot, textColor);
+        int lineNumber = 0;
+        foreach (const QString &t, lines) {
+            svg += QString("<g><title>text:%1</title>\n").arg(TextUtils::escapeAnd(t));	// escapeAnd leaves '\n' inplace
+            QDomElement child = element.firstChildElement("wires");
+            if (!child.isNull() && false) {
+                genPath(element, svg, "none", "white", doFillings);
+            }
+            else {
+                genText(element, t, svg, paramsRoot, textColor, lineNumber++);
+            }
         }
         svg += QString("</g>\n");
 
