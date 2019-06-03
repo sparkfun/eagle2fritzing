@@ -186,6 +186,8 @@ BrdApplication::BrdApplication(int& argc, char **argv[]) : QApplication(argc, *a
 	m_core = "core";
 }
 
+QHash<QString, QString> SubpartAliases;
+
 void BrdApplication::start() {
     if (!initArguments()) {
         usage();
@@ -636,9 +638,19 @@ bool BrdApplication::initArguments() {
         return false;
     }
 
-    QFile file(m_eaglePath);
+    QFileInfo file(m_eaglePath);
     if (!file.exists()) {
         message(QString("eagle executable '%1' not found").arg(m_eaglePath));
+        return false;
+    }
+
+    if (!file.isFile()) {
+        message(QString("The specified path '%1' points to something that is not a file").arg(m_eaglePath));
+        return false;
+    }
+
+    if (!file.isExecutable()) {
+        message(QString("The specified path '%1' points to non-executable file").arg(m_eaglePath));
         return false;
     }
 
@@ -695,6 +707,27 @@ QRectF BrdApplication::getDimensions(QDomElement & root, QDomElement & maxElemen
 	from.append(root.firstChildElement("rects"));
 	QList<QDomElement> to;
 	collectLayerElements(from, to, layer);
+
+    // ADAFRUIT 2016-07-05: some parts require drilling into 'elements' to get dimensions
+    // (specifically from 'wires' elements in dimensions layer).
+    QDomElement elements = root.firstChildElement("elements");
+    QDomElement element  = elements.firstChildElement("element");
+    while(!element.isNull()) {
+        QDomElement package = element.firstChildElement("package");
+        while(!package.isNull()) {
+            QDomElement wires = package.firstChildElement("wires");
+            QDomElement wire  = wires.firstChildElement("wire");
+            while(!wire.isNull()) {
+                if(wire.attribute("layer").compare(DimensionsLayer) == 0) {
+                    to.append(wire);
+                }
+                wire = wire.nextSiblingElement("wire");
+            }
+            package = package.nextSiblingElement("package");
+        }
+        element = element.nextSiblingElement("element");
+    }
+
 
 	if (deep) {
 		addElements(root, to, 0);
@@ -995,7 +1028,7 @@ QString BrdApplication::genParams(QDomElement & root, const QString & prefix)
 	params += QString("<!-- <property name='family'>sample family</property> -->\n");
     params += QString("</properties>\n");
 
-	params += QString("<breadboard breadboard-color='%1'>\n").arg("#1F7A34");
+	params += QString("<breadboard breadboard-color='%1'>\n").arg("#E6321E");
 	params += QString("<extra-layers>\n");
 	params += ("<!-- to add extra layers to the breadboard,\n"
 					"uncomment the following <layer> elements,\n"
@@ -1118,7 +1151,7 @@ QString BrdApplication::genFZP(QDomElement & root, QDomElement & paramsRoot, Dif
 	fzp += QString("<version>4</version>\n");
     fzp += QString("<date>%1</date>\n").arg(QDate::currentDate().toString(Qt::ISODate));
 
-	QString author = getenvUser();
+    QString author = "SparkFun";
 	QStringList tags;
 	QHash<QString, QString> properties;
 	QString description;
@@ -1480,7 +1513,7 @@ bool viasFirst(QDomElement & contact1, QDomElement & contact2)
 
 QString BrdApplication::genGenericBreadboard(QDomElement & root, QDomElement & paramsRoot, DifParam * difParam, QDir & workingFolder) 
 {
-	QString boardColor = "#1F7A34";
+	QString boardColor = "#E6321E";
 
 	if (!paramsRoot.isNull()) {
 		QDomElement bb = paramsRoot.firstChildElement("breadboard");
@@ -1523,7 +1556,7 @@ QString BrdApplication::genBreadboard(QDomElement & root, QDomElement & paramsRo
 	svg += "<g id='breadboard'>\n";
 	svg += "<g id='icon'>\n";						// make sure we can use this image for icon view
 
-	QString boardColor = "#1F7A34";
+	QString boardColor = "#E6321E";
 
 	if (!paramsRoot.isNull()) {
 		QDomElement bb = paramsRoot.firstChildElement("breadboard");
@@ -1616,6 +1649,45 @@ void BrdApplication::addSubparts(QDomElement & root, QDomElement & paramsRoot, Q
 		foreach (QDomElement package, packages) {
 			QString name = package.attribute("name", "").toLower();
 
+            // ADAFRUIT 2016-06-16: MICROBUILDER LIBRARY KLUDGE:
+            // I think all these different names could just be
+            // done in and/all.packages.txt file (using 'map')
+            if((name == "0805-no") || (name == "0805") || (name == "_0805mp") || (name == "c0805") || (name == "r0805")) {
+                // Rename generic 0805 to resistor or cap as needed,
+                // based on parent element name (starts with 'C' or 'R').
+                QString elementName = package.parentNode().toElement().attribute("name", "").toUpper();
+                if(     elementName[0] == 'C') name = "0805-cap";
+                else if(elementName[0] == 'R') name = "0805-res";
+            } else if((name == "0603-no") || (name == "0603") || (name == "_0603mp") || (name == "c0603") || (name == "r0603")) {
+                // Rename generic 0603 to resistor or cap as needed,
+                // based on parent element name (starts with 'C' or 'R').
+                QString elementName = package.parentNode().toElement().attribute("name", "").toUpper();
+                if(     elementName[0] == 'C') name = "0603-cap";
+                else if(elementName[0] == 'R') name = "0603-res";
+            } else if(name == "chipled_0805_nooutline") {
+                // Rename generic chip LED to suitable color,
+                // based on parent element value ("RED", "GREEN", etc.).
+                QString elementValue = package.parentNode().toElement().attribute("value", "").toUpper();
+                name="0805-led-white"; // Use white LED default unless otherwise specified
+                if(     elementValue == "RED")    name="0805-led-red";
+                else if(elementValue == "ORANGE") name="0805-led-yellow"; // No orange part; use yellow
+                else if(elementValue == "YELLOW") name="0805-led-yellow";
+                else if(elementValue == "GREEN")  name="0805-led-green";
+                else if(elementValue == "BLUE")   name="0805-led-blue";
+                else if(elementValue == "WHITE")  name="0805-led-white";
+            } else if(name == "chipled_0603_nooutline") {
+                // Rename generic chip LED to suitable color,
+                // based on parent element value ("RED", "GREEN", etc.).
+                QString elementValue = package.parentNode().toElement().attribute("value", "").toUpper();
+                name="0603-led-white"; // Use white LED default unless otherwise specified
+                if(     elementValue == "RED")    name="0603-led-red";
+                else if(elementValue == "ORANGE") name="0603-led-yellow"; // No orange part; use yellow
+                else if(elementValue == "YELLOW") name="0603-led-yellow";
+                else if(elementValue == "GREEN")  name="0603-led-green";
+                else if(elementValue == "BLUE")   name="0603-led-blue";
+                else if(elementValue == "WHITE")  name="0603-led-white";
+            }
+
 			qreal offsetX = 0;
 			qreal offsetY = 0;
 			qreal nudgeAngle = 999999;
@@ -1624,8 +1696,11 @@ void BrdApplication::addSubparts(QDomElement & root, QDomElement & paramsRoot, Q
 			while (!nudge.isNull()) {
 				if (nudge.attribute("package").compare(name, Qt::CaseInsensitive) == 0) {
 					QDomElement parent = package.parentNode().toElement();
-					if (parent.attribute("name").compare(nudge.attribute("element"), Qt::CaseInsensitive) == 0) {
-						offsetX = TextUtils::convertToInches(nudge.attribute("x", "0")) * 1000;
+                    // ADAFRUIT 2016-06-17: 'nudge' KLUDGE:
+                    // If 'element' attribute is missing, use 'package' only for comparison
+                    if (parent.attribute("name").isNull() ||
+                        parent.attribute("name").compare(nudge.attribute("element"), Qt::CaseInsensitive) == 0) {
+                        offsetX = TextUtils::convertToInches(nudge.attribute("x", "0")) * 1000;
 						offsetY = TextUtils::convertToInches(nudge.attribute("y", "0")) * 1000;
 						if (!nudge.attribute("angle").isEmpty()) {
 							nudgeAngle = nudge.attribute("angle").toDouble();
@@ -1640,10 +1715,12 @@ void BrdApplication::addSubparts(QDomElement & root, QDomElement & paramsRoot, Q
 
 			if (!show) continue;
 
-			//qDebug() << subpartsFolder.absoluteFilePath(name + ".svg");
+            qDebug() << subpartsFolder.absoluteFilePath(name + ".svg");
 			QString sname = findSubpart(name, subpartAliases, subpartsFolder);
-			if (sname.isEmpty()) continue;
-
+            if (sname.isEmpty()){
+                qDebug() << "\t*** Subpart not found" << name;
+                continue;
+            }
             qDebug() << "\tfound subpart (2)" << name << sname;
 
 			qreal x1,y1,x2,y2;
@@ -2123,21 +2200,39 @@ void BrdApplication::collectContacts(QDomElement & root, QDomElement & paramsRoo
 
 void BrdApplication::collectPackages(QDomElement &root, QList<QDomElement> & packages)
 {
-	QDomElement elements = root.firstChildElement("elements");
-	if (!elements.isNull()) {
-		QDomElement element = elements.firstChildElement("element");
-		while (!element.isNull()) {
-			QDomElement package = element.firstChildElement("package");
-			if (!package.isNull()) {
-				//QString name = package.attribute("name");
-				//qDebug() << name;
-				if (inBounds(package)) {
-					packages.append(package);
-				}
-			}
-			element = element.nextSiblingElement("element");
-		}
-	}
+    QDir subpartsFolder(m_fritzingSubpartsPath);
+    subpartsFolder.cd("breadboard");
+
+    QDomElement elements = root.firstChildElement("elements");
+    if (!elements.isNull()) {
+        QDomElement element = elements.firstChildElement("element");
+        while (!element.isNull()) {
+            // ADAFRUIT 2016-06-24: certain subparts, if they exist in
+            // the 'subparts' folder and are mirrored (because they
+            // appear on the bPlace layer) would get drawn anyway (with
+            // a substituted subpart graphic), because the element
+            // itself isn't on that layer, only its constituent
+            // rectangles (which are correctly ignored and not drawn,
+            // but the replacement subpart would get drawn regardless).
+            // Example: ADAFRUIT_2.5MM on the back of the VEML6070 board.
+            // SO...if the 'mirror' flag is set and a package is found
+            // in the subparts/breadboard folder, it'll be ignored.
+            // THIS MAY CAUSE TROUBLE if a part on the top layer is
+            // mirrored for some reason.
+            QDomElement package = element.firstChildElement("package");
+            if (!package.isNull()) {
+                QString name = package.attribute("name");
+                if((element.attribute("mirror", "") != "1") ||
+                   findSubpart(name, SubpartAliases, subpartsFolder).isEmpty()) {
+                    //qDebug() << name;
+                    if (inBounds(package)) {
+                        packages.append(package);
+                    }
+                }
+            }
+            element = element.nextSiblingElement("element");
+        }
+    }
 }
 
 void BrdApplication::collectConnectors(QDomElement &paramsRoot, QList<QDomElement> & connectorList, bool collectSpaces)
@@ -3188,7 +3283,7 @@ void BrdApplication::genOverlaps(QDomElement & root, const FillStroke & fsNormal
 			// only draw on-board package if TopPlaceLayer marks it
 			r = getDimensions(package, maxElement, TopPlaceLayer, false);
 			if (r.isEmpty()) {
-				//qDebug() << "package" << packageName << "not on layer 21";
+                qDebug() << "package" << packageName << "not on layer 21";
 				continue;
 			}
 			if (!overlap.contains(r)) continue;
@@ -3276,6 +3371,17 @@ void BrdApplication::genOverlaps(QDomElement & root, const FillStroke & fsNormal
 			fs = &fsIC;
 			//qDebug() << "using IC" << packageName << r.width() << r.height();
 		}
+
+        // ADAFRUIT 2016-06-20 -- don't draw transparent elements
+        // larger than 0.1" -- typically part bounds, not desirable
+        // on breadboard image:
+        qreal w, h;
+        w = fabs(r.right() - r.left()); // Size in mills
+        h = fabs(r.bottom() - r.top());
+//        if((fs->fillOpacity < 1.0) && ((w > 100) || (h > 100)))
+
+        if(fs->fillOpacity < 1.0) continue; // Don't draw ANY transparent elements!
+
 
 		double angle = package.parentNode().toElement().attribute("angle", "0").toDouble();
 		if ((qRound(angle) / 45) % 2 == 1) {
@@ -3607,7 +3713,7 @@ QString BrdApplication::translateBoardColor(const QString & color)
 	QHash<QString,QString> colors;
 	colors.insert("blue", "#147390");
 	colors.insert("red", "#C62717");
-	colors.insert("green", "#1F7A34");
+	colors.insert("green", "#E6321E");
 	colors.insert("purple", "#672E58");
 	colors.insert("black", "#1C1A1D");
 	colors.insert("white", "#fbfbfb");
@@ -3665,10 +3771,13 @@ bool BrdApplication::matchAnd(QDomElement & contact, QDomElement & connector) {
 }
 
 QString BrdApplication::findSubpart(const QString & name, QHash<QString, QString> & subpartAliases, QDir & subpartsFolder) {
-	QFile file(subpartsFolder.absoluteFilePath(name + ".svg"));
-	if (file.exists()) {
+
+    QFile file(subpartsFolder.absoluteFilePath(name + ".svg"));
+    QFileInfo fileInfo(subpartsFolder.absoluteFilePath(name + ".svg"));
+
+    if (fileInfo.exists()) {
         return name;
-	}
+    }
 
     QString aname = subpartAliases.value(name.toLower(), "");
     if (aname.isEmpty()) return "";
